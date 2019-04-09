@@ -4,7 +4,7 @@ The Tensorflow implementation of [PROGRESSIVE GROWING OF GANS FOR IMPROVED QUALI
 ### The generative process of PG-GAN
 
 <p align="center">
-  <img src="/images/samples.png">
+  <img src="/images/samples.jpg">
 </p>
 
 
