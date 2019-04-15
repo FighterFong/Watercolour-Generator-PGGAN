@@ -12,8 +12,9 @@ import tqdm
 class PGGAN(object):
 
     # build model
-    def __init__(self, batch_size, max_iters, model_path, read_model_path, data, sample_size, sample_path, log_dir,
+    def __init__(self, oper_name, batch_size, max_iters, model_path, read_model_path, data, sample_size, sample_path, log_dir,
                  learn_rate, lam_gp, lam_eps, PG, trans, use_wscale, is_celeba, step_by_save_sample, step_by_save_weights):
+        self.oper_name = oper_name
         self.batch_size = batch_size
         self.max_iters = max_iters
         self.gan_model_path = model_path
@@ -38,6 +39,7 @@ class PGGAN(object):
         self.alpha_tra = tf.Variable(initial_value=0.0, trainable=False, name='alpha_tra')
         self.step_by_save_sample = step_by_save_sample
         self.step_by_save_weights = step_by_save_weights
+
         self.init_logger()
 
     # def init_logger(self):
@@ -60,7 +62,8 @@ class PGGAN(object):
     #     self.logger.addHandler(fh)
 
     def init_logger(self):
-        self.f_logger = open('Logs/' + str(self.pg) + '.log', 'a')
+        check_path('./Logs/')
+        self.f_logger = open('Logs/' + str(self.oper_name) + '-' + str(self.pg) + '.log', 'a')
 
     def build_model_PGGan(self):
         self.fake_images = self.generate(self.z, pg=self.pg, t=self.trans, alpha_trans=self.alpha_tra)
@@ -211,7 +214,7 @@ class PGGAN(object):
             elif self.pg == 1:
                 pass
 
-            step = 0
+            # step = 0
             batch_num = 0
             # circle training
             # while step <= self.max_iters:
@@ -228,7 +231,9 @@ class PGGAN(object):
                         sample_z = np.random.normal(size=[self.batch_size, self.sample_size])
                         # Load data
                         if self.is_celeba:
+                            # 只是拿了一个batch的image path
                             train_list = self.data_In.getNextBatch(batch_num, self.batch_size)
+                            # 对那一个batch的path读取成图片
                             realbatch_array = self.data_In.getShapeForData(train_list, resize_w=self.output_size)
                         else:
                             realbatch_array = self.data_In.getNextBatch(self.batch_size, resize_w=self.output_size)
@@ -238,7 +243,8 @@ class PGGAN(object):
                             alpha = np.float(step) / self.max_iters
                             low_realbatch_array = zoom(realbatch_array, zoom=[1, 0.5, 0.5, 1], mode='nearest')
                             low_realbatch_array = zoom(low_realbatch_array, zoom=[1, 2, 2, 1], mode='nearest')
-                            # 按一定的alpha，将图片转换成高分辨率 + 低分辨率的线性组合，起到加噪声的作用？？
+                            # 按一定的alpha，alpha是根据当前训练的epoch的增大而增大，既图片越来越清晰
+                            # 将图片转换成高分辨率 + 低分辨率的线性组合，起到加噪声的作用？？
                             realbatch_array = alpha * realbatch_array + (1 - alpha) * low_realbatch_array
 
                         # 训练判别器。training discriminator first
@@ -258,12 +264,14 @@ class PGGAN(object):
                 # the alpha of fake_in process
                 sess.run(alpha_tra_assign, feed_dict={step_pl: step})
 
-                if step % self.step_by_save_sample == 0:
+                step_by_save_loss = 100
+                if step % step_by_save_loss == 0:
                     D_loss, G_loss, D_origin_loss, alpha_tra = sess.run([self.D_loss, self.G_loss, self.D_origin_loss,self.alpha_tra], feed_dict={self.images: realbatch_array, self.z: sample_z})
                     # print("PG %d, step %d: D loss=%.7f G loss=%.7f, D_or loss=%.7f, opt_alpha_tra=%.7f" % (self.pg, step, D_loss, G_loss, D_origin_loss, alpha_tra))
                     # self.logger.debug("PG %d, step %d: D loss=%.7f G loss=%.7f, D_or loss=%.7f, opt_alpha_tra=%.7f" % (self.pg, step, D_loss, G_loss, D_origin_loss, alpha_tra))
                     self.f_logger.write("PG %d, step %d: D loss=%.7f G loss=%.7f, D_or loss=%.7f, opt_alpha_tra=%.7f" % (self.pg, step, D_loss, G_loss, D_origin_loss, alpha_tra) + '\n')
 
+                if step % self.step_by_save_sample == 0:
                     # normalize and save real images
                     realbatch_array = np.clip(realbatch_array, -1, 1)
                     # print('1-',type(realbatch_array[0:self.batch_size]))
@@ -292,7 +300,7 @@ class PGGAN(object):
                     # self.logger.debug("Model saved in file: %s" % self.gan_model_path)
                     self.f_logger.write("Model saved in file: %s" % self.gan_model_path + '\n')
 
-                step += 1
+                # step += 1
 
             save_path = self.saver.save(sess, self.gan_model_path)
             # print("Model saved in file: %s" % save_path)
@@ -324,6 +332,7 @@ class PGGAN(object):
                 conv = lrelu(conv2d(conv, output_dim=self.get_nf(pg - 2 - i), d_h=1, d_w=1, use_wscale=self.use_wscale,
                                                       name='dis_n_conv_2_{}'.format(conv.shape[1])))
                 conv = downscale2d(conv)
+                # 第一个循环，进入。并且是training状态
                 if i == 0 and t:
                     conv = alpha_trans * conv + (1 - alpha_trans) * conv_iden
 
@@ -354,7 +363,7 @@ class PGGAN(object):
             # pg=1，即第一层的training不需要进入，不需要提升pixel并进行一系列操作
             for i in range(pg - 1):
                 # t 代表是否进行training，如果进行training则进行下述操作
-                # 
+                # 最后一层循环，进入
                 if i == pg - 2 and t:
                     # To RGB
                     de_iden = conv2d(de, output_dim=3, k_w=1, k_h=1, d_w=1, d_h=1, use_wscale=self.use_wscale,

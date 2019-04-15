@@ -5,6 +5,7 @@ import numpy as np
 import scipy
 import scipy.misc
 import h5py
+import cv2
 
 def mkdir_p(path):
     try:
@@ -14,6 +15,9 @@ def mkdir_p(path):
             pass
         else:
             raise
+
+def print_msg(tag, message):
+    print('== [' + str(tag) + ']', message)
 
 class CelebA(object):
     def __init__(self, image_path):
@@ -28,20 +32,24 @@ class CelebA(object):
         # get the data array of image
         return images_list
 
-    # load images by path and resize it
+    # 对那一个batch的path读取成图片。load images by path and resize it
     def getShapeForData(self, filenames, resize_w=64):
-        array = [get_image(batch_file, image_size=128, is_crop=False, resize_w=resize_w,
+        array = [get_image(batch_file, image_size=256, is_crop=False, resize_w=resize_w,  # image_size=128
                            is_grayscale=False) for batch_file in filenames]  # is_crop=True, 人脸crop的意义何在，反正在jellyfish上采用crop局部效果贼差
 
         try:
             sample_images = np.array(array)
         except Exception as e:
             print('[DEBUG] Data Format Error,Ignore it!The Image Path Is:',sample_images)
+        # ('==', <type 'numpy.ndarray'>)
+        # print('==',type(sample_images))
+        # ('==', (16, 4, 4, 3))
+        # print('==',sample_images.shape)
         
         # return sub_image_mean(array , IMG_CHANNEL)
         return sample_images
 
-    # acquire next batch image path list
+    # 拿了一个batch的image path。acquire next batch image path list
     def getNextBatch(self, batch_num=0, batch_size=64):
         ro_num = len(self.image_list) / batch_size - 1
         if batch_num % ro_num == 0:
@@ -51,7 +59,7 @@ class CelebA(object):
 
             self.image_list = np.array(self.image_list)
             self.image_list = self.image_list[perm]
-            print ("images shuffle！")
+            print("images shuffle！")
 
         # 在shuffle之后的image_list里面取一个batch返回
         return self.image_list[(batch_num % ro_num) * batch_size: (batch_num % ro_num + 1) * batch_size]
@@ -83,13 +91,14 @@ def get_image(image_path, image_size, is_crop=True, resize_w=64, is_grayscale=Fa
     # load images and resize
     return transform(imread(image_path , is_grayscale), image_size, is_crop , resize_w)
 
-def get_image_dat(image_path , image_size, is_crop=True, resize_w=64, is_grayscale=False):
+def get_image_dat(image_path, image_size, is_crop=True, resize_w=64, is_grayscale=False):
     return transform(imread_dat(image_path , is_grayscale), image_size, is_crop , resize_w)
 
-def transform(image, npx=64 , is_crop=False, resize_w=64):
+def transform(image, npx=64, is_crop=False, resize_w=64):
     # npx : # of pixels width/height of image
     if is_crop:
-        cropped_image = center_crop(image, npx, resize_w = resize_w)
+        cropped_image = center_crop(image, npx, resize_w=resize_w)
+        # cropped_image = center_crop(image, npx/2, npx, resize_w=resize_w)
     else:
         cropped_image = image
         cropped_image = scipy.misc.imresize(cropped_image ,
@@ -127,12 +136,17 @@ def imread(path, is_grayscale=False):
     if (is_grayscale):
         return scipy.misc.imread(path, flatten=True).astype(np.float)
     else:
-        return scipy.misc.imread(path).astype(np.float)
+        # image = scipy.misc.imread(path).astype(np.float)
+        image = cv2.imread(path)
+        # print('=='*20)
+        # print(image.shape)
+        # print('=='*20)
+        return image
 
 def imread_dat(path, is_grayscale):
     return np.load(path)
 
-# 一个 batch 图片整合在一起，整合成一个图片
+# 一个 batch 图片整合在一起，整合成一个图片保存
 # def imsave(images, size, path):
 #     return scipy.misc.imsave(path, merge(images, size))
 
@@ -169,13 +183,13 @@ def inverse_transform(image):
 
 def read_image_list(category):
     filenames = []
-    print("list file")
+    # print("list file")
     list = os.listdir(category)
     list.sort()
     for file in list:
         if 'jpg' in file:
             filenames.append(category + "/" + file)
-    print("list file ending!")
+    # print("list file ending!")
     length = len(filenames)
     perm = np.arange(length)
     np.random.shuffle(perm)
