@@ -27,7 +27,7 @@ The path parameters need modify your path prefix + 'Data/Jellyfish/recognizer/tr
 	* step_by_save_sample:	the step of saving sample
 	* step_by_save_weights:	the step of saving weights
 
-==Just for reference only, specific command will show in Iterations section==
+_Just for reference only, specific command will show in Iterations section_
 ```bash
 python main.py --path=your celeba data-path 
 
@@ -69,10 +69,11 @@ In this version, we need to run the model with following parameters, also update
 you can download from 143.89.131.29:/home/ustlab/Fong_Dir/jellyfish/Data/2018-04-15/ folder.
 Three datasets: Jellyfish.zip, Landscape.zip, Calligraphy.zip
 
-The path parameters need modify your path prefix + 'Data/Jellyfish/recognizer/true'
-	* OPER_FLAG:			Flag of opertion, 0 is for training, 1 for testing.
-	* step_by_save_sample:	the step of saving sample
-	* step_by_save_weights:	the step of saving weights
+The path parameters need modify to your path which saved datasets.
+	- path                  Datasets saved path
+	- OPER_FLAG:			Flag of opertion, 0 is for training, 1 for testing.
+	- step_by_save_sample:	the step of saving sample
+	- step_by_save_weights:	the step of saving weights
 
 ```shell
 1. For Jellyfish
@@ -94,7 +95,7 @@ c. python main.py --path=/Path/To/Calligraphy/train/世/ --OPER_NAME=Calligraphy
 
 ```
 
-**==Note:Please refer Prerequisites section to setup your environment before you run the script.If the script running quickly and no images generated,pls check your environment if python2.7==**
+_**Note:Please refer Prerequisites section to setup your environment before you run the script.If the script running quickly and no images generated,pls check your environment if python2.7**_
 
 
 ## Back
